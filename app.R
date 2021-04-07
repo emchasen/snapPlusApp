@@ -5,6 +5,7 @@ library(shinyWidgets)
 library(randomForest)
 library(shinyBS)
 library(plotly)
+library(gt)
 
 
 
@@ -50,18 +51,29 @@ ui <- fluidPage(
   
   hr(),
   
-  # soil selection begins
   fixedRow(
-    bsCollapse(id = "soilselect", open = "Select your soil properties (click to close)",
-               bsCollapsePanel("Select your soil properties (click to close)",
-                               column(12,
-                                      helpText(
-                                        a(
-                                          "Click here to find your soil (NRCS Web Soil Survey)",
-                                          href = "https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx",
-                                          target = "_blank"
-                                        ))
-                               ),
+    column(12, 
+           h3("Select Your Soil and Soil Properties"),
+           helpText(
+                      a(
+                        "Click here to find your soil (NRCS Web Soil Survey)",
+                        href = "https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx",
+                        target = "_blank"
+                      ))
+    )
+  ),
+  # soil selection begins
+  fluidRow(
+    #bsCollapse(id = "soilselect", open = "Select your soil properties (click to close)",
+               #bsCollapsePanel("Select your soil properties (click to close)",
+                               # column(12,
+                               #        helpText(
+                               #          a(
+                               #            "Click here to find your soil (NRCS Web Soil Survey)",
+                               #            href = "https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx",
+                               #            target = "_blank"
+                               #          ))
+                               # ),
                                # row of selectInputs for selecting soils
                                fixedRow(
                                  # Input 1: dropdown for county selections
@@ -86,8 +98,8 @@ ui <- fluidPage(
                                  #slider for phosphorus values
                                  column(6, align = "center", uiOutput("phos"))
                                )
-               )
-    )
+    #           )
+   # )
   ),
   
   hr(),
@@ -153,8 +165,14 @@ ui <- fluidPage(
   ),
   
   br(),
-  br(),
   hr(),
+  
+  fluidRow(
+    column(12, align = "center",
+           gt_output("scenario"))
+  ),
+  br(),
+  br(),
   
   fluidRow(
     column(6,
@@ -455,6 +473,19 @@ server <- function(input, output) {
       rbind(c("density", density)) %>%
       rbind(c("Contour", contour))
     
+    scenario <- croppingdf %>%
+      drop_na() %>%
+      pivot_wider(names_from = "Variable", values_from = "Value") %>%
+      bind_cols(Manure = paste0(manure, "%"), Fertilizer = paste0(fert, "%"))
+    
+    output$scenario <- render_gt({
+      scenario %>%
+        gt() %>%
+        cols_label("crop" = "Crop",
+                   "cover" = "Cover",
+                   "tillage" = "Tillage")
+    })
+    
     # connect the correct names for model runs and transpose
     cropsForPred <- left_join(croppingdf, names) %>%
       drop_na() %>%
@@ -584,7 +615,7 @@ server <- function(input, output) {
         pi <- NA
       }
     
-    erosion_table <- data.frame('Crop System' =  paste((na.omit(croppingdf[,2]))), Erosion = erosion)
+    erosion_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), Erosion = erosion)
     
     output$erosionPred <- renderPlotly({
       
@@ -601,18 +632,18 @@ server <- function(input, output) {
       )
       
       plot_ly(erosion_table, 
-              x = ~Erosion + 1, y = ~Crop.System,
+              x = ~Erosion + 1, y = ~system,
               orientation = "h",
               marker = list(color = 'rgba(50, 171, 96, 0.7)'),
               type = "bar",
               hoverinfo = "text",
-              text = ~paste("Crop:", Crop.System, "\nErosion:", Erosion)) %>% 
+              text = ~paste("Erosion:", Erosion)) %>% 
         layout(title = "Predicted Erosion", 
                xaxis = x, yaxis = y, barmode = 'group') 
       
     })
     
-    PI_table <- data.frame('Crop System' =  paste((na.omit(croppingdf[,2]))), PI = pi)
+    PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
     
     output$PIPred <- renderPlotly({
       
@@ -629,12 +660,12 @@ server <- function(input, output) {
       )
       
       plot_ly(PI_table, 
-              x = ~PI, y = ~Crop.System,
+              x = ~PI, y = ~system,
               orientation = "h",
               marker = list(color = 'rgba(55, 128, 191, 0.7)'),
               type = "bar",
               hoverinfo = "text",
-              text = ~paste("Crop:", Crop.System, "\nP Loss:", PI)) %>% 
+              text = ~paste("P Loss:", PI)) %>% 
         layout(title = "Predicted Phosphorus loss", xaxis = x, yaxis = y, barmode = 'group') 
       
     })
