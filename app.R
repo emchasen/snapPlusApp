@@ -1,6 +1,7 @@
 #load packages
 library(shiny)
 library(tidyverse)
+library(tidymodels)
 library(shinyWidgets)
 library(randomForest)
 library(shinyBS)
@@ -20,11 +21,12 @@ counties <- unique(soils$County)
 crops <- unique(cropSystems$crop)
 
 # load erosion models
-ccnc_e <- readRDS("models/ContCorn_NoCoverErosion.rds")
-cccc_e <- readRDS("models/ContCorn_WithCoverErosion.rds")
-ptrt_e <- readRDS("models/RotationalPastureErosion.rds")
-ptcn_e <- readRDS("models/ContinouosPastureErosion.rds")
-dr_e <- readRDS("models/dairyRotationErosion.rds")
+cc_erosion <- readRDS("tidyModels/ContCornErosion.rds")
+cg_erosion <- readRDS("tidyModels/cornGrainErosion.rds")
+cso_erosion <- readRDS("tidyModels/cornSoyOatErosion.rds")
+dr_erosion <- readRDS("tidyModels/dairyRotationErosion.rds")
+ps_erosion <- readRDS("tidyModels/pastureSeedingErosion.rds")
+pt_erosion <- readRDS("tidyModels/pastureErosion.rds")
 
 # load PI models
 ccnc_pi <- readRDS("models/ContCorn_NoCoverPI.rds")
@@ -450,7 +452,7 @@ server <- function(input, output) {
     } else {
       fert <- NA
       manure <- NA
-      options <- filter(cropSystems, crop == input$crop, density == input$density)
+      #options <- filter(cropSystems, crop == input$crop, density == input$density)
     } 
     
     # fertilizer values
@@ -479,11 +481,10 @@ server <- function(input, output) {
       bind_cols(Manure = paste0(manure, "%"), Fertilizer = paste0(fert, "%"))
     
     output$scenario <- render_gt({
-      scenario %>%
-        gt() %>%
-        cols_label("crop" = "Crop",
-                   "cover" = "Cover",
-                   "tillage" = "Tillage")
+      
+        scenario %>%
+          gt() 
+      
     })
     
     # connect the correct names for model runs and transpose
@@ -498,37 +499,11 @@ server <- function(input, output) {
       mutate_if(is.character, as.factor)
     
     # complete data frame creation and predict for any scenario
-    if (full_df$crop == "cc") # crop = cc
-    {if (full_df$cover == "nc") { # cover = nc
-      tillage <- factor(ccnc_e$forest$xlevels$tillage)
-      Contour <- factor(ccnc_e$forest$xlevels$Contour)
-      
-      level_df <- expand_grid(tillage, Contour)
-      
-      df <- full_df %>%
-        select(c(slope:totalP2O5_lbs)) %>% 
-        slice(rep(1:n(), each=nrow(level_df)))
-      
-      df <- cbind(level_df, df)
-      
-      pred_df <- df %>%
-        filter(tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
-      
-      erosion_pred_df <- pred_df %>%
-        select(c(tillage:k, total_DM_lbs))
-      
-      erosion <- round(predict(ccnc_e, erosion_pred_df),2)
-      
-      pi_pred_df <- pred_df %>%
-        select(c(tillage:slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
-        mutate(Erosion = erosion)
-      
-      pi <- round(predict(ccnc_pi, pi_pred_df),2)
-      
-    } else { # other covers
-      tillage <- factor(cccc_e$forest$xlevels$tillage)
-      Contour <- factor(cccc_e$forest$xlevels$Contour)
-      cover <- factor(cccc_e$forest$xlevels$cover)
+    if (full_df$crop == "cc") {# crop = cc
+    #{if (full_df$cover == "nc") { # cover = nc
+      tillage <- factor(cc_erosion$preproc$xlevels$tillage)
+      cover <- factor(cc_erosion$preproc$xlevels$cover)
+      Contour <- factor(cc_erosion$preproc$xlevels$Contour)
       
       level_df <- expand_grid(cover, tillage, Contour)
       
@@ -544,19 +519,48 @@ server <- function(input, output) {
       erosion_pred_df <- pred_df %>%
         select(c(cover:k, total_DM_lbs))
       
-      erosion <- round(predict(cccc_e, erosion_pred_df),2)
+      erosion <- round(predict(cc_erosion, erosion_pred_df),2)
       
       pi_pred_df <- pred_df %>%
-        select(c(cover:slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
-        mutate(Erosion = erosion)
+        select(c(tillage:slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
       
-      pi <- round(predict(cccc_pi, pi_pred_df),2) }
+      ##TODO check that this model frame works with new PI models
+      pi <- round(predict(ccnc_pi, pi_pred_df),2)
+      
+    # } else { # other covers
+    #   tillage <- factor(cccc_e$forest$xlevels$tillage)
+    #   Contour <- factor(cccc_e$forest$xlevels$Contour)
+    #   cover <- factor(cccc_e$forest$xlevels$cover)
+    #   
+    #   level_df <- expand_grid(cover, tillage, Contour)
+    #   
+    #   df <- full_df %>%
+    #     select(c(slope:totalP2O5_lbs)) %>% 
+    #     slice(rep(1:n(), each=nrow(level_df)))
+    #   
+    #   df <- cbind(level_df, df)
+    #   
+    #   pred_df <- df %>%
+    #     filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+    #   
+    #   erosion_pred_df <- pred_df %>%
+    #     select(c(cover:k, total_DM_lbs))
+    #   
+    #   erosion <- round(predict(cccc_e, erosion_pred_df),2)
+    #   
+    #   pi_pred_df <- pred_df %>%
+    #     select(c(cover:slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
+    #     mutate(Erosion = erosion)
+    #   
+    #   pi <- round(predict(cccc_pi, pi_pred_df),2) }
       
     } else if (full_df$crop == "dr") {
       
-      cover <- factor(dr_e$forest$xlevels$cover)
-      tillage <- factor(dr_e$forest$xlevels$tillage)
-      Contour <- factor(dr_e$forest$xlevels$Contour)
+      cover <- factor(dr_erosion$preproc$xlevels$cover)
+      tillage <- factor(dr_erosion$preproc$xlevels$tillage)
+      Contour <- factor(dr_erosion$preproc$xlevels$Contour)
       
       level_df <- expand_grid(cover, tillage, Contour)
       
@@ -569,44 +573,54 @@ server <- function(input, output) {
       pred_df <- df %>%
         filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
       
-      erosion <- round(predict(dr_e, pred_df),2)
+      erosion <- round(predict(dr_erosion, pred_df),2)
       
       pi_pred_df <- pred_df %>%
-        mutate(Erosion = erosion)
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
       
       pi <- round(predict(dr_pi, pi_pred_df),2)
       
     } else if (full_df$crop == "pt") {
-      if(full_df$rotational == "rt") {# rotational pasture
+     # if(full_df$rotational == "rt") {# rotational pasture
         
-        erosion_pred_df <- full_df %>%
-          select(c(slope:totalP2O5_lbs))
+      #   erosion_pred_df <- full_df %>%
+      #     select(c(slope:totalP2O5_lbs))
+      #   
+      #   erosion <- round(predict(ptrt_e, erosion_pred_df), 4)
+      #   
+      #   pi_pred_df <- full_df %>%
+      #     select(c(slope, slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
+      #     mutate(Erosion = erosion)
+      #   
+      #   pi <- round(predict(ptrt_pi, pi_pred_df), 4)
+      #   
+      # } else { # continuous pasture
         
-        erosion <- round(predict(ptrt_e, erosion_pred_df), 4)
+        density <- factor(pt_erosion$preproc$xlevels$density)
+        rotational <- factor(pt_erosion$preproc$xlevels$rotational)
         
-        pi_pred_df <- full_df %>%
-          select(c(slope, slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
-          mutate(Erosion = erosion)
-        
-        pi <- round(predict(ptrt_pi, pi_pred_df), 4)
-        
-      } else { # continuous pasture
-        
-        density <- factor(ptcn_e$forest$xlevels$density)
+        level_df <- expand_grid(rotational, density)
         
         df <- full_df %>%
           select(c(slope:totalP2O5_lbs)) %>% 
           slice(rep(1:n(), each=length(density)))
         
-        df <- cbind(density, df)
+        df <- cbind(level_df, df) 
         
-        pred_df <- df %>%
-          filter(density == levels(full_df$density))
+        if(full_df$rotational == "rt"){
+          pred_df <- df %>%
+            filter(rotational == levels(full_df$rotational), density == "rt")
+        } else{
+          pred_df <- df %>%
+            filter(rotational == levels(full_df$rotational),  density == levels(full_df$density))
+        }
         
-        erosion <- round(predict(ptcn_e, pred_df),3)
+        erosion <- round(predict(pt_erosion, pred_df),3)
         
         pi_pred_df <- pred_df %>%
-          mutate(Erosion = erosion)
+          bind_cols(erosion) %>%
+          mutate(Erosion = .pred)
         
         pi <- round(predict(ptcn_pi, pi_pred_df),3)
         
@@ -615,7 +629,8 @@ server <- function(input, output) {
         pi <- NA
       }
     
-    erosion_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), Erosion = erosion)
+    #erosion_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), Erosion = erosion)
+    erosion_table <- erosion %>% bind_cols(system = "x")
     
     output$erosionPred <- renderPlotly({
       
@@ -632,12 +647,12 @@ server <- function(input, output) {
       )
       
       plot_ly(erosion_table, 
-              x = ~Erosion + 1, y = ~system,
+              x = ~.pred + 1, y = ~system,
               orientation = "h",
               marker = list(color = 'rgba(50, 171, 96, 0.7)'),
               type = "bar",
               hoverinfo = "text",
-              text = ~paste("Erosion:", Erosion)) %>% 
+              text = ~paste("Erosion:", .pred)) %>% 
         layout(title = "Predicted Erosion", 
                xaxis = x, yaxis = y, barmode = 'group') 
       
