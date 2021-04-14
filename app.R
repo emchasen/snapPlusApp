@@ -30,11 +30,10 @@ pt_erosion <- readRDS("tidyModels/pastureErosion.rds")
 dl_erosion <- readRDS("tidyModels/dryLotErosionErosion.rds")
 
 # load PI models
-ccnc_pi <- readRDS("models/ContCorn_NoCoverPI.rds")
-cccc_pi <- readRDS("models/ContCorn_withCoverPI.rds")
-ptrt_pi <- readRDS("models/RotationalPasturePI.rds")
-ptcn_pi <- readRDS("models/ContinuousPasturePI.rds")
-dr_pi <- readRDS("models/dairyRotationPI.rds")
+cc_pi <- readRDS("models/ContinuousCornPI.rds")
+# ptrt_pi <- readRDS("models/RotationalPasturePI.rds")
+# ptcn_pi <- readRDS("models/ContinuousPasturePI.rds")
+# dr_pi <- readRDS("models/dairyRotationPI.rds")
 
 # UI ----------------------------------------------------------------------
 
@@ -175,14 +174,23 @@ ui <- fluidPage(
            gt_output("scenario"))
   ),
   br(),
+  fluidRow(
+    column(12, align = "center",
+           tableOutput("fullDF"))
+  ),
+  br(),
+  fluidRow(
+    column(12,
+           tableOutput("predDF"))
+  ),
   br(),
   
   fluidRow(
     column(6,
            plotlyOutput("erosionPred")
-    # ),
-    # column(6,
-    #        plotlyOutput("PIPred")
+     ),
+     column(6,
+            plotlyOutput("PIPred")
     )
   )
   
@@ -464,8 +472,8 @@ server <- function(input, output) {
     total_DM_lbs <- sum(grazedManureDM_lbs, appliedDM_lbs, na.rm = TRUE)
     # totalP2O5 = grazedP2O5 + P2O5_applied_lbs
     grazedP2O5 <- unique(options$grazed_P2O5_lbs)
-    P2O5_applied_lbs = (fert + manure)*(p_needs/100)
-    totalP2O5_lbs = grazedP2O5 + P2O5_applied_lbs
+    P2O5_applied_lbs = (fert + manure)*(p_needs/100) 
+    totalP2O5_lbs = sum(grazedP2O5, P2O5_applied_lbs, na.rm = TRUE)
     
     croppingdf <- tibble(
       Variable = c("crop"),
@@ -517,47 +525,18 @@ server <- function(input, output) {
       pred_df <- df %>%
         filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
       
-      erosion_pred_df <- pred_df %>%
-        select(c(cover:k, total_DM_lbs))
+      # pred_df <- pred_df %>%
+      #   select(c(cover:k, total_DM_lbs))
       
-      erosion <- round(predict(cc_erosion, erosion_pred_df),2)
+      erosion <- round(predict(cc_erosion, pred_df),2)
       
-      # pi_pred_df <- pred_df %>%
-      #   select(c(tillage:slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
-      #   bind_cols(erosion) %>%
-      #   mutate(Erosion = .pred)
-      # 
-      # ##TODO check that this model frame works with new PI models
-      # pi <- round(predict(ccnc_pi, pi_pred_df),2)
-      # 
-    # } else { # other covers
-    #   tillage <- factor(cccc_e$forest$xlevels$tillage)
-    #   Contour <- factor(cccc_e$forest$xlevels$Contour)
-    #   cover <- factor(cccc_e$forest$xlevels$cover)
-    #   
-    #   level_df <- expand_grid(cover, tillage, Contour)
-    #   
-    #   df <- full_df %>%
-    #     select(c(slope:totalP2O5_lbs)) %>% 
-    #     slice(rep(1:n(), each=nrow(level_df)))
-    #   
-    #   df <- cbind(level_df, df)
-    #   
-    #   pred_df <- df %>%
-    #     filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
-    #   
-    #   erosion_pred_df <- pred_df %>%
-    #     select(c(cover:k, total_DM_lbs))
-    #   
-    #   erosion <- round(predict(cccc_e, erosion_pred_df),2)
-    #   
-    #   pi_pred_df <- pred_df %>%
-    #     select(c(cover:slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
-    #     mutate(Erosion = erosion)
-    #   
-    #   pi <- round(predict(cccc_pi, pi_pred_df),2) }
+      pi_pred_df <- full_df %>% 
+        bind_cols(erosion) %>% 
+        mutate(Erosion = .pred)
+
+      pi <- round(predict(cc_pi, pi_pred_df),2)
       
-    } else if (full_df$crop == "dr") {
+      } else if (full_df$crop == "dr") {
       
       cover <- factor(dr_erosion$preproc$xlevels$cover)
       tillage <- factor(dr_erosion$preproc$xlevels$tillage)
@@ -581,6 +560,7 @@ server <- function(input, output) {
       #   mutate(Erosion = .pred)
       # 
       # pi <- round(predict(dr_pi, pi_pred_df),2)
+      pi <- NA
       
     } else if (full_df$crop == "pt") {
      # if(full_df$rotational == "rt") {# rotational pasture
@@ -624,6 +604,7 @@ server <- function(input, output) {
         #   mutate(Erosion = .pred)
         # 
         # pi <- round(predict(ptcn_pi, pi_pred_df),3)
+        pi <- NA
         
       } else if (full_df$crop == "cg") {
         cover <- factor(cg_erosion$preproc$xlevels$cover)
@@ -648,6 +629,7 @@ server <- function(input, output) {
         #   mutate(Erosion = .pred)
         # 
         # pi <- round(predict(dr_pi, pi_pred_df),2)
+        pi <- NA
         
         } else if (full_df$crop == "cso") {
           cover <- factor(cso_erosion$preproc$xlevels$cover)
@@ -672,6 +654,7 @@ server <- function(input, output) {
           #   mutate(Erosion = .pred)
           # 
           # pi <- round(predict(dr_pi, pi_pred_df),2)
+          pi <- NA
           
         } else if (full_df$crop == "ps") {
           tillage <- factor(ps_erosion$preproc$xlevels$tillage)
@@ -695,6 +678,7 @@ server <- function(input, output) {
           #   mutate(Erosion = .pred)
           # 
           # pi <- round(predict(dr_pi, pi_pred_df),2)
+          pi <- NA
         } else if(full_df$crop == "dl"){
           density <- factor(dl_erosion$preproc$xlevels$density)
           
@@ -707,7 +691,6 @@ server <- function(input, output) {
           pred_df <- df %>%
             filter(density == levels(full_df$density))
           
-          ##TODO why is density = low giving different prediction in app
           erosion <- round(predict(dl_erosion, pred_df),2)
           
           # pi_pred_df <- pred_df %>%
@@ -715,10 +698,10 @@ server <- function(input, output) {
           #   mutate(Erosion = .pred)
           # 
           # pi <- round(predict(dr_pi, pi_pred_df),2)
+          pi <- NA
         } 
     
     
-    #erosion_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), Erosion = erosion)
     erosion_table <- erosion %>% bind_cols(system = "x")
     
     output$erosionPred <- renderPlotly({
@@ -747,32 +730,39 @@ server <- function(input, output) {
       
     })
     
-    # PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
-    # 
-    # output$PIPred <- renderPlotly({
-    #   
-    #   x <- list(
-    #     title = "P Loss (lbs P/acre)",
-    #     range = c(0, 50)
-    #   )
-    #   y <- list(
-    #     title = "",
-    #     zeroline = FALSE,
-    #     showline = FALSE,
-    #     showticklabels = FALSE,
-    #     showgrid = FALSE
-    #   )
-    #   
-    #   plot_ly(PI_table, 
-    #           x = ~PI, y = ~system,
-    #           orientation = "h",
-    #           marker = list(color = 'rgba(55, 128, 191, 0.7)'),
-    #           type = "bar",
-    #           hoverinfo = "text",
-    #           text = ~paste("P Loss:", PI)) %>% 
-    #     layout(title = "Predicted Phosphorus loss", xaxis = x, yaxis = y, barmode = 'group') 
-    #   
-    # })
+    output$fullDF <- renderTable({
+      options
+    })
+    output$predDF <- renderTable({
+      pred_df
+    })
+    
+    PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
+
+    output$PIPred <- renderPlotly({
+
+      x <- list(
+        title = "P Loss (lbs P/acre)",
+        range = c(0, 50)
+      )
+      y <- list(
+        title = "",
+        zeroline = FALSE,
+        showline = FALSE,
+        showticklabels = FALSE,
+        showgrid = FALSE
+      )
+
+      plot_ly(PI_table,
+              x = ~PI, y = ~system,
+              orientation = "h",
+              marker = list(color = 'rgba(55, 128, 191, 0.7)'),
+              type = "bar",
+              hoverinfo = "text",
+              text = ~paste("P Loss:", PI)) %>%
+        layout(title = "Predicted Phosphorus loss", xaxis = x, yaxis = y, barmode = 'group')
+
+    })
   })
 }
 
