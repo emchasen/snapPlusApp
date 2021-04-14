@@ -31,6 +31,7 @@ dl_erosion <- readRDS("tidyModels/dryLotErosionErosion.rds")
 
 # load PI models
 cc_pi <- readRDS("models/ContinuousCornPI.rds")
+cg_pi <- readRDS("models/CornGrainPI.rds")
 # ptrt_pi <- readRDS("models/RotationalPasturePI.rds")
 # ptcn_pi <- readRDS("models/ContinuousPasturePI.rds")
 # dr_pi <- readRDS("models/dairyRotationPI.rds")
@@ -430,7 +431,7 @@ server <- function(input, output) {
       tillage <- NA
     } else {
       tillage <- input$tillage
-      options <- filter(options, tillage == input$tillage)
+      #options <- filter(options, tillage == input$tillage)
     }
     
     if(anyNA(options$contour)) {
@@ -624,12 +625,11 @@ server <- function(input, output) {
         
         erosion <- round(predict(cg_erosion, pred_df),2)
         
-        # pi_pred_df <- pred_df %>%
-        #   bind_cols(erosion) %>%
-        #   mutate(Erosion = .pred)
-        # 
-        # pi <- round(predict(dr_pi, pi_pred_df),2)
-        pi <- NA
+        pi_pred_df <- full_df %>% 
+          bind_cols(erosion) %>% 
+          mutate(Erosion = .pred)
+        
+        pi <- round(predict(cg_pi, pi_pred_df),2)
         
         } else if (full_df$crop == "cso") {
           cover <- factor(cso_erosion$preproc$xlevels$cover)
@@ -737,6 +737,9 @@ server <- function(input, output) {
       pred_df
     })
     
+    if(pi < 0) {
+      pi = 0
+    }
     PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
 
     output$PIPred <- renderPlotly({
