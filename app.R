@@ -34,8 +34,8 @@ cc_pi <- readRDS("models/ContinuousCornPI.rds")
 cg_pi <- readRDS("models/CornGrainPI.rds")
 cso_pi <- readRDS("models/CsoPI.rds")
 dr_pi <- readRDS("models/dairyRotationPI.rds")
-# ptrt_pi <- readRDS("models/RotationalPasturePI.rds")
-# ptcn_pi <- readRDS("models/ContinuousPasturePI.rds")
+ps_pi <- readRDS("models/pastureSeedingPI.rds")
+pt_pi <- readRDS("models/pasturePI.rds")
 
 
 # UI ----------------------------------------------------------------------
@@ -627,12 +627,12 @@ server <- function(input, output) {
       
       erosion <- round(predict(ps_erosion, pred_df),2)
       
-      # pi_pred_df <- pred_df %>%
-      #   bind_cols(erosion) %>%
-      #   mutate(Erosion = .pred)
-      # 
-      # pi <- round(predict(dr_pi, pi_pred_df),2)
-      pi <- NA
+      pi_pred_df <- full_df %>%
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
+
+      pi <- round(predict(ps_pi, pi_pred_df),2)
+      
     } else if (full_df$crop == "pt") {
      # if(full_df$rotational == "rt") {# rotational pasture
         
@@ -670,12 +670,12 @@ server <- function(input, output) {
         
         erosion <- round(predict(pt_erosion, pred_df),3)
         
-        # pi_pred_df <- pred_df %>%
-        #   bind_cols(erosion) %>%
-        #   mutate(Erosion = .pred)
-        # 
-        # pi <- round(predict(ptcn_pi, pi_pred_df),3)
-        pi <- NA
+        pi_pred_df <- pred_df %>%
+          bind_cols(erosion) %>%
+          mutate(Erosion = .pred)
+
+        pi <- round(predict(pt_pi, pi_pred_df),3)
+        
         }  else if(full_df$crop == "dl"){
           density <- factor(dl_erosion$preproc$xlevels$density)
           
