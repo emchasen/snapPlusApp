@@ -162,11 +162,11 @@ ui <- fluidPage(
   br(),
   hr(),
   
-  fluidRow(
-    column(12, align = "center",
-           gt_output("scenario"))
-  ),
-  br(),
+  # fluidRow(
+  #   column(12, align = "center",
+  #          gt_output("scenario"))
+  # ),
+  # br(),
   # fluidRow(
   #   column(12, align = "center",
   #          tableOutput("fullDF"))
@@ -468,15 +468,15 @@ server <- function(input, output) {
       rbind(c("density", density)) %>%
       rbind(c("Contour", contour))
     
-    scenario <- croppingdf %>%
-      drop_na() %>%
-      pivot_wider(names_from = "Variable", values_from = "Value") %>%
-      bind_cols(Manure = paste0(manure, "%"), Fertilizer = paste0(fert, "%"))
-    
-    output$scenario <- render_gt({
-        scenario %>%
-          gt() 
-    })
+    # scenario <- croppingdf %>%
+    #   drop_na() %>%
+    #   pivot_wider(names_from = "Variable", values_from = "Value") %>%
+    #   bind_cols(Manure = paste0(manure, "%"), Fertilizer = paste0(fert, "%"))
+    # 
+    # output$scenario <- render_gt({
+    #     scenario %>%
+    #       gt() 
+    # })
     
     # connect the correct names for model runs and transpose
     cropsForPred <- left_join(croppingdf, names) %>%
@@ -666,8 +666,9 @@ server <- function(input, output) {
     output$erosionPred <- renderPlotly({
       
       x <- list(
-        title = "Erosion + 1 (tons/acre)",
-        range = c(0, 50)
+        title = " ",
+        range = c(0, 50), 
+        side = "top" 
       )
       y <- list(
         title = "",
@@ -678,14 +679,16 @@ server <- function(input, output) {
       )
       
       plot_ly(erosion_table, 
-              x = ~.pred + 1, y = ~system,
+              x = ~.pred, y = ~system,
               orientation = "h",
               marker = list(color = 'rgba(50, 171, 96, 0.7)'),
               type = "bar",
               hoverinfo = "text",
               text = ~paste("Erosion:", .pred)) %>% 
-        layout(title = "Predicted Erosion", 
-               xaxis = x, yaxis = y, barmode = 'group') 
+        layout(title = "PREDICTED EROSION (tons soil/acre)", 
+               xaxis = x, yaxis = y, barmode = 'group',
+               margin = list(t=100)) 
+     
       
     })
     
@@ -706,8 +709,9 @@ server <- function(input, output) {
     output$PIPred <- renderPlotly({
 
       x <- list(
-        title = "P Loss (lbs P/acre)",
-        range = c(0, 50)
+        title = " ",
+        range = c(0, 50), 
+        side = "top"
       )
       y <- list(
         title = "",
@@ -724,7 +728,9 @@ server <- function(input, output) {
               type = "bar",
               hoverinfo = "text",
               text = ~paste("P Loss:", PI)) %>%
-        layout(title = "Predicted Phosphorus loss", xaxis = x, yaxis = y, barmode = 'group')
+        layout(title = "PREDICTED PHOSPHORUS LOSS (lbs P/acre)", 
+               xaxis = x, yaxis = y, barmode = 'group',
+               margin = list(t=100))
 
     })
   })
