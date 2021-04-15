@@ -36,7 +36,7 @@ cso_pi <- readRDS("models/CsoPI.rds")
 dr_pi <- readRDS("models/dairyRotationPI.rds")
 ps_pi <- readRDS("models/pastureSeedingPI.rds")
 pt_pi <- readRDS("models/pasturePI.rds")
-
+dl_pi <- readRDS("models/dryLotPI.rds")
 
 # UI ----------------------------------------------------------------------
 
@@ -51,8 +51,7 @@ ui <- fluidPage(
            h2("Erosion and Phosphorus Loss Predictions for Soil Types and Cropping Management")),
     
     column(1,
-           h2(img(src = "uw-crest.png", height = 60)))
-  ),
+           h2(img(src = "uw-crest.png", height = 60)))),
   
   hr(),
   
@@ -63,10 +62,8 @@ ui <- fluidPage(
                       a(
                         "Click here to find your soil (NRCS Web Soil Survey)",
                         href = "https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx",
-                        target = "_blank"
-                      ))
-    )
-  ),
+                        target = "_blank")))),
+  
   # soil selection begins
   fluidRow(
     #bsCollapse(id = "soilselect", open = "Select your soil properties (click to close)",
@@ -86,13 +83,11 @@ ui <- fluidPage(
                                         selectInput(
                                           inputId = "county",
                                           label = h4("County"),
-                                          choices = counties
-                                        )),
+                                          choices = counties)),
                                  #Input 2: dropdown for component name selections. list is created in server.
                                  column(4, uiOutput("compname")),
                                  # Input 3: dropdown for soil symbol. list is created in server.
-                                 column(4, uiOutput("musym"))
-                               ),
+                                 column(4, uiOutput("musym"))),
                                
                                # row of sliders for defining slope and soil P
                                fixedRow(
@@ -101,8 +96,7 @@ ui <- fluidPage(
                                  column(6, align = "center", uiOutput("slope")),
                                  
                                  #slider for phosphorus values
-                                 column(6, align = "center", uiOutput("phos"))
-                               )
+                                 column(6, align = "center", uiOutput("phos")))
     #           )
    # )
   ),
@@ -124,9 +118,7 @@ ui <- fluidPage(
            radioButtons(
              inputId = "crop",
              label = h4("Crop Rotation"),
-             choices = crops
-           )
-    ),
+             choices = crops)),
     
     ## COL 2 ##
     # cover crop, tillage or density, depending on crop rotation
@@ -164,9 +156,7 @@ ui <- fluidPage(
              inputId = "runModels",
              label = "Run models",
              style = "simple",
-             color = "success"
-           )
-    )
+             color = "success"))
   ),
   
   br(),
@@ -177,24 +167,21 @@ ui <- fluidPage(
            gt_output("scenario"))
   ),
   br(),
-  fluidRow(
-    column(12, align = "center",
-           tableOutput("fullDF"))
-  ),
+  # fluidRow(
+  #   column(12, align = "center",
+  #          tableOutput("fullDF"))
+  # ),
   br(),
-  fluidRow(
-    column(12,
-           tableOutput("predDF"))
-  ),
-  br(),
+  # fluidRow(
+  #   column(12,
+  #          tableOutput("predDF"))
+  # ),
   
   fluidRow(
     column(6,
-           plotlyOutput("erosionPred")
-     ),
+           plotlyOutput("erosionPred")),
      column(6,
-            plotlyOutput("PIPred")
-    )
+            plotlyOutput("PIPred"))
   )
   
 )
@@ -216,8 +203,7 @@ server <- function(input, output) {
       selectInput(
         inputId = "compname",
         label = h4("Soil Name"),
-        choices = comps
-      )
+        choices = comps)
     })
   })
   
@@ -232,8 +218,7 @@ server <- function(input, output) {
       selectInput(
         inputId = "musym",
         label = h4("Soil Symbol"),
-        choices = musyms
-      )
+        choices = musyms)
     })
   })
   
@@ -252,8 +237,7 @@ server <- function(input, output) {
         label = h4("Slope (%)"),
         min = minSlope,
         max = maxSlope,
-        value = repSlope
-      )
+        value = repSlope)
     })
   })
   
@@ -263,8 +247,7 @@ server <- function(input, output) {
       label = h4("Soil Phosphorous"),
       min = 0,
       max = 175,
-      value = 35
-    )
+      value = 35)
   })
   
   
@@ -286,8 +269,8 @@ server <- function(input, output) {
       selectInput(
         inputId = "cover",
         label = h4("Cover Crop System"),
-        choices = covers
-      )
+        choices = covers,
+        selected = "None")
     })
     
     # rotation and density
@@ -300,7 +283,7 @@ server <- function(input, output) {
     })
     
     output$contour <- renderUI({
-      checkboxInput("contour", label = "On Contour", value = TRUE)
+      checkboxInput("contour", label = "On Contour", value = FALSE)
     })
     
     
@@ -318,17 +301,16 @@ server <- function(input, output) {
         sliderInput(
           inputId = "fertilizerP",
           label = h4("Percent of crop P needs with synthetic fertilizer"),
-          min = 0, max = 100, value = 50
-        )
+          min = 0, max = 100, value = 0)
       })
       
       output$manure <- renderUI({
         sliderInput(
           inputId = "manureP",
           label = h4("Percent of crop P needs with manure"),
-          min = 0, max = 200, value = 100
-        )
+          min = 0, max = 200, value = 0)
       })
+      
     } else {
       output$fert <- NULL
       output$manure <- NULL
@@ -345,8 +327,7 @@ server <- function(input, output) {
     
     if(!anyNA(options$cover)) {
       req(input$cover)
-      options <- filter(options, cover == input$cover)
-    }
+      options <- filter(options, cover == input$cover)}
     
     tillages <- unique(options$tillage)
     
@@ -357,8 +338,8 @@ server <- function(input, output) {
         selectInput(
           inputId = "tillage",
           label = h4("Tillage"),
-          choices = tillages
-        )
+          choices = tillages,
+          selected = "No till")
       })
     }
   })
@@ -493,10 +474,8 @@ server <- function(input, output) {
       bind_cols(Manure = paste0(manure, "%"), Fertilizer = paste0(fert, "%"))
     
     output$scenario <- render_gt({
-      
         scenario %>%
           gt() 
-      
     })
     
     # connect the correct names for model runs and transpose
@@ -511,8 +490,7 @@ server <- function(input, output) {
       mutate_if(is.character, as.factor)
     
     # complete data frame creation and predict for any scenario
-    if (full_df$crop == "cc") {# crop = cc
-    #{if (full_df$cover == "nc") { # cover = nc
+    if (full_df$crop == "cc") {
       tillage <- factor(cc_erosion$preproc$xlevels$tillage)
       cover <- factor(cc_erosion$preproc$xlevels$cover)
       Contour <- factor(cc_erosion$preproc$xlevels$Contour)
@@ -584,71 +562,55 @@ server <- function(input, output) {
 
         pi <- round(predict(cso_pi, pi_pred_df),2)
        
-        } else if (full_df$crop == "dr") {
+      } else if (full_df$crop == "dr") {
       
-      cover <- factor(dr_erosion$preproc$xlevels$cover)
-      tillage <- factor(dr_erosion$preproc$xlevels$tillage)
-      Contour <- factor(dr_erosion$preproc$xlevels$Contour)
+        cover <- factor(dr_erosion$preproc$xlevels$cover)
+        tillage <- factor(dr_erosion$preproc$xlevels$tillage)
+        Contour <- factor(dr_erosion$preproc$xlevels$Contour)
       
-      level_df <- expand_grid(cover, tillage, Contour)
+        level_df <- expand_grid(cover, tillage, Contour)
       
-      df <- full_df %>%
-        select(c(slope:totalP2O5_lbs)) %>% 
-        slice(rep(1:n(), each=nrow(level_df)))
+        df <- full_df %>%
+          select(c(slope:totalP2O5_lbs)) %>% 
+          slice(rep(1:n(), each=nrow(level_df)))
       
-      df <- cbind(level_df, df)
+        df <- cbind(level_df, df)
       
-      pred_df <- df %>%
-        filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+        pred_df <- df %>%
+          filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
       
-      erosion <- round(predict(dr_erosion, pred_df),2)
+        erosion <- round(predict(dr_erosion, pred_df),2)
       
-      pi_pred_df <- full_df %>%
-        bind_cols(erosion) %>%
-        mutate(Erosion = .pred)
-      
-       pi <- round(predict(dr_pi, pi_pred_df),2)
-      
-      
-    } else if (full_df$crop == "ps") {
-      tillage <- factor(ps_erosion$preproc$xlevels$tillage)
-      Contour <- factor(ps_erosion$preproc$xlevels$Contour)
-      
-      level_df <- expand_grid(tillage, Contour)
-      
-      df <- full_df %>%
-        select(c(slope:totalP2O5_lbs)) %>% 
-        slice(rep(1:n(), each=nrow(level_df)))
-      
-      df <- cbind(level_df, df)
-      
-      pred_df <- df %>%
-        filter(tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
-      
-      erosion <- round(predict(ps_erosion, pred_df),2)
-      
-      pi_pred_df <- full_df %>%
-        bind_cols(erosion) %>%
-        mutate(Erosion = .pred)
-
-      pi <- round(predict(ps_pi, pi_pred_df),2)
-      
-    } else if (full_df$crop == "pt") {
-     # if(full_df$rotational == "rt") {# rotational pasture
+        pi_pred_df <- full_df %>%
+          bind_cols(erosion) %>%
+          mutate(Erosion = .pred)
         
-      #   erosion_pred_df <- full_df %>%
-      #     select(c(slope:totalP2O5_lbs))
-      #   
-      #   erosion <- round(predict(ptrt_e, erosion_pred_df), 4)
-      #   
-      #   pi_pred_df <- full_df %>%
-      #     select(c(slope, slopelenusle.r, silt, k:totalP2O5_lbs)) %>%
-      #     mutate(Erosion = erosion)
-      #   
-      #   pi <- round(predict(ptrt_pi, pi_pred_df), 4)
-      #   
-      # } else { # continuous pasture
+         pi <- round(predict(dr_pi, pi_pred_df),2)
+      
+      } else if (full_df$crop == "ps") {
+        tillage <- factor(ps_erosion$preproc$xlevels$tillage)
+        Contour <- factor(ps_erosion$preproc$xlevels$Contour)
+      
+        level_df <- expand_grid(tillage, Contour)
+      
+        df <- full_df %>%
+          select(c(slope:totalP2O5_lbs)) %>% 
+          slice(rep(1:n(), each=nrow(level_df)))
         
+        df <- cbind(level_df, df)
+        
+        pred_df <- df %>%
+          filter(tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+        
+        erosion <- round(predict(ps_erosion, pred_df),2)
+        
+        pi_pred_df <- full_df %>%
+          bind_cols(erosion) %>%
+          mutate(Erosion = .pred)
+  
+        pi <- round(predict(ps_pi, pi_pred_df),2)
+      
+      } else if (full_df$crop == "pt") {
         density <- factor(pt_erosion$preproc$xlevels$density)
         rotational <- factor(pt_erosion$preproc$xlevels$rotational)
         
@@ -676,27 +638,27 @@ server <- function(input, output) {
 
         pi <- round(predict(pt_pi, pi_pred_df),3)
         
-        }  else if(full_df$crop == "dl"){
-          density <- factor(dl_erosion$preproc$xlevels$density)
+      } else if (full_df$crop == "dl") {
+        density <- factor(dl_erosion$preproc$xlevels$density)
           
-          df <- full_df %>%
-            select(c(slope:totalP2O5_lbs)) %>% 
-            slice(rep(1:n(), each=length(density)))
-          
-          df <- cbind(density, df)
+        df <- full_df %>%
+          select(c(slope:totalP2O5_lbs)) %>% 
+          slice(rep(1:n(), each=length(density)))
         
-          pred_df <- df %>%
-            filter(density == levels(full_df$density))
+        df <- cbind(density, df)
+        
+        pred_df <- df %>%
+          filter(density == levels(full_df$density))
           
-          erosion <- round(predict(dl_erosion, pred_df),2)
+        erosion <- round(predict(dl_erosion, pred_df),2)
           
-          # pi_pred_df <- pred_df %>%
-          #   bind_cols(erosion) %>%
-          #   mutate(Erosion = .pred)
-          # 
-          # pi <- round(predict(dr_pi, pi_pred_df),2)
-          pi <- NA
-        } 
+        pi_pred_df <- pred_df %>%
+          bind_cols(erosion) %>%
+          mutate(Erosion = .pred)
+
+        pi <- round(predict(dl_pi, pi_pred_df),2)
+          
+      } 
     
     
     erosion_table <- erosion %>% bind_cols(system = "x")
@@ -727,16 +689,18 @@ server <- function(input, output) {
       
     })
     
-    output$fullDF <- renderTable({
-      options
-    })
-    output$predDF <- renderTable({
-      pred_df
-    })
+    # output$fullDF <- renderTable({
+    #   options
+    # })
+    # output$predDF <- renderTable({
+    #   pred_df
+    # })
     
+    # safe guard
     if(pi < 0) {
       pi = 0
     }
+    
     PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
 
     output$PIPred <- renderPlotly({
