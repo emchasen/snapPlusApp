@@ -30,13 +30,13 @@ pt_erosion <- readRDS("tidyModels/pastureErosion.rds")
 dl_erosion <- readRDS("tidyModels/dryLotErosionErosion.rds")
 
 # load PI models
-cc_pi <- readRDS("models/ContinuousCornPI.rds")
-cg_pi <- readRDS("models/CornGrainPI.rds")
-cso_pi <- readRDS("models/CsoPI.rds")
-dr_pi <- readRDS("models/dairyRotationPI.rds")
-ps_pi <- readRDS("models/pastureSeedingPI.rds")
-pt_pi <- readRDS("models/pasturePI.rds")
-dl_pi <- readRDS("models/dryLotPI.rds")
+cc_pi <- readRDS("tidyModels/ContCornTidyPI.rds")
+cg_pi <- readRDS("tidyModels/CornGrain_tidyPI.rds")
+cso_pi <- readRDS("tidyModels/CSO_tidyPI.rds")
+dr_pi <- readRDS("tidyModels/dairyRot_tidyPI.rds")
+ps_pi <- readRDS("tidyModels/pastureSeedingTidyPI.rds")
+pt_pi <- readRDS("tidyModels/PasturePI.rds")
+dl_pi <- readRDS("tidyModels/DryLot_tidyPI.rds")
 
 # UI ----------------------------------------------------------------------
 
@@ -513,6 +513,7 @@ server <- function(input, output) {
         mutate(Erosion = .pred)
 
       pi <- round(predict(cc_pi, pi_pred_df),2)
+      pi_CI <- predict(cc_pi, pi_pred_df, type = "conf_int")
       
       } else if (full_df$crop == "cg") {
         cover <- factor(cg_erosion$preproc$xlevels$cover)
@@ -537,6 +538,7 @@ server <- function(input, output) {
           mutate(Erosion = .pred)
         
         pi <- round(predict(cg_pi, pi_pred_df),2)
+        pi_CI <- predict(cg_pi, pi_pred_df, type = "conf_int")
         
       } else if (full_df$crop == "cso") {
         cover <- factor(cso_erosion$preproc$xlevels$cover)
@@ -561,6 +563,7 @@ server <- function(input, output) {
           mutate(Erosion = .pred)
 
         pi <- round(predict(cso_pi, pi_pred_df),2)
+        pi_CI <- predict(cso_pi, pi_pred_df, type = "conf_int")
        
       } else if (full_df$crop == "dr") {
       
@@ -586,6 +589,7 @@ server <- function(input, output) {
           mutate(Erosion = .pred)
         
          pi <- round(predict(dr_pi, pi_pred_df),2)
+         pi_CI <- predict(dr_pi, pi_pred_df, type = "conf_int")
       
       } else if (full_df$crop == "ps") {
         tillage <- factor(ps_erosion$preproc$xlevels$tillage)
@@ -609,6 +613,7 @@ server <- function(input, output) {
           mutate(Erosion = .pred)
   
         pi <- round(predict(ps_pi, pi_pred_df),2)
+        pi_CI <- predict(ps_pi, pi_pred_df, type = "conf_int")
       
       } else if (full_df$crop == "pt") {
         density <- factor(pt_erosion$preproc$xlevels$density)
@@ -637,6 +642,7 @@ server <- function(input, output) {
           mutate(Erosion = .pred)
 
         pi <- round(predict(pt_pi, pi_pred_df),3)
+        pi_CI <- predict(pt_pi, pi_pred_df, type = "conf_int")
         
       } else if (full_df$crop == "dl") {
         density <- factor(dl_erosion$preproc$xlevels$density)
@@ -657,6 +663,7 @@ server <- function(input, output) {
           mutate(Erosion = .pred)
 
         pi <- round(predict(dl_pi, pi_pred_df),2)
+        pi_CI <- predict(dl_pi, pi_pred_df, type = "conf_int")
           
       } 
     
@@ -700,11 +707,14 @@ server <- function(input, output) {
     # })
     
     # safe guard
-    if(pi < 0) {
-      pi = 0
+    if(pi$.pred < 0) {
+      pi$.pred = 0
     }
     
-    PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
+    PI_table <- pi %>% 
+      bind_cols(system = "x") %>%
+      bind_cols(pi_CI)
+    #PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
 
     output$PIPred <- renderPlotly({
 
@@ -722,12 +732,20 @@ server <- function(input, output) {
       )
 
       plot_ly(PI_table,
-              x = ~PI, y = ~system,
+              x = ~.pred, y = ~system,
+              error_x = list(type = "data", 
+                             symmetric = FALSE, 
+                             arrayminus = ~.pred_lower, 
+                             array = ~.pred_upper, 
+                             color = "black"),
               orientation = "h",
               marker = list(color = 'rgba(55, 128, 191, 0.7)'),
               type = "bar",
               hoverinfo = "text",
-              text = ~paste("P Loss:", PI)) %>%
+              text = ~paste("Lower CI:", round(.pred_lower,2),
+                            "<br>P Loss:", .pred, 
+                            "<br>Upper CI:", round(.pred_upper,2)
+                            )) %>%
         layout(title = "PREDICTED PHOSPHORUS LOSS (lbs P/acre)", 
                xaxis = x, yaxis = y, barmode = 'group',
                margin = list(t=100))
