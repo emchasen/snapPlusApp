@@ -1,5 +1,6 @@
 #load packages
 library(shiny)
+library(shinydashboard)
 library(tidyverse)
 library(tidymodels)
 library(shinyWidgets)
@@ -7,6 +8,7 @@ library(randomForest)
 library(shinyBS)
 library(plotly)
 library(gt)
+library(dashboardthemes)
 
 
 
@@ -21,169 +23,196 @@ counties <- unique(soils$County)
 crops <- unique(cropSystems$crop)
 
 # load erosion models
-cc_erosion <- readRDS("tidyModels/ContCornErosion.rds")
-cg_erosion <- readRDS("tidyModels/cornGrainErosion.rds")
-cso_erosion <- readRDS("tidyModels/cornSoyOatErosion.rds")
-dr_erosion <- readRDS("tidyModels/dairyRotationErosion.rds")
-ps_erosion <- readRDS("tidyModels/pastureSeedingErosion.rds")
-pt_erosion <- readRDS("tidyModels/pastureErosion.rds")
-dl_erosion <- readRDS("tidyModels/dryLotErosionErosion.rds")
-
-# load PI models
-cc_pi <- readRDS("tidyModels/ContCornTidyPI.rds")
-cg_pi <- readRDS("tidyModels/CornGrain_tidyPI.rds")
-cso_pi <- readRDS("tidyModels/CSO_tidyPI.rds")
-dr_pi <- readRDS("tidyModels/dairyRot_tidyPI.rds")
-ps_pi <- readRDS("tidyModels/pastureSeedingTidyPI.rds")
-pt_pi <- readRDS("tidyModels/PasturePI.rds")
-dl_pi <- readRDS("tidyModels/DryLot_tidyPI.rds")
+# cc_erosion <- readRDS("tidyModels/ContCornErosion.rds")
+# cg_erosion <- readRDS("tidyModels/cornGrainErosion.rds")
+# cso_erosion <- readRDS("tidyModels/cornSoyOatErosion.rds")
+# dr_erosion <- readRDS("tidyModels/dairyRotationErosion.rds")
+# ps_erosion <- readRDS("tidyModels/pastureSeedingErosion.rds")
+# pt_erosion <- readRDS("tidyModels/pastureErosion.rds")
+# dl_erosion <- readRDS("tidyModels/dryLotErosionErosion.rds")
+# 
+# # load PI models
+# cc_pi <- readRDS("tidyModels/ContCornTidyPI.rds")
+# cg_pi <- readRDS("tidyModels/CornGrain_tidyPI.rds")
+# cso_pi <- readRDS("tidyModels/CSO_tidyPI.rds")
+# dr_pi <- readRDS("tidyModels/dairyRot_tidyPI.rds")
+# ps_pi <- readRDS("tidyModels/pastureSeedingTidyPI.rds")
+# pt_pi <- readRDS("tidyModels/PasturePI.rds")
+# dl_pi <- readRDS("tidyModels/DryLot_tidyPI.rds")
 
 # UI ----------------------------------------------------------------------
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
+ui <- dashboardPage(
   # Page header
-  fixedRow(
-    column(1,
-           h2(img(src = "grasslandColorCenter.png", height = 60))),
-    
-    column(10, align = "center",
-           h2("Erosion and Phosphorus Loss Predictions for Soil Types and Cropping Management")),
-    
-    column(1,
-           h2(img(src = "uw-crest.png", height = 60)))),
-  
-  hr(),
-  
-  fixedRow(
-    column(12, 
-           h3("Select Your Soil and Soil Properties"),
-           helpText(
-                      a(
-                        "Click here to find your soil (NRCS Web Soil Survey)",
-                        href = "https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx",
-                        target = "_blank")))),
-  
-  # soil selection begins
-  fluidRow(
-    #bsCollapse(id = "soilselect", open = "Select your soil properties (click to close)",
-               #bsCollapsePanel("Select your soil properties (click to close)",
-                               # column(12,
-                               #        helpText(
-                               #          a(
-                               #            "Click here to find your soil (NRCS Web Soil Survey)",
-                               #            href = "https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx",
-                               #            target = "_blank"
-                               #          ))
-                               # ),
-                               # row of selectInputs for selecting soils
-                               fixedRow(
-                                 # Input 1: dropdown for county selections
-                                 column(4,
-                                        selectInput(
-                                          inputId = "county",
-                                          label = h4("County"),
-                                          choices = counties)),
-                                 #Input 2: dropdown for component name selections. list is created in server.
-                                 column(4, uiOutput("compname")),
-                                 # Input 3: dropdown for soil symbol. list is created in server.
-                                 column(4, uiOutput("musym"))),
-                               
-                               # row of sliders for defining slope and soil P
-                               fixedRow(
-                                 
-                                 #slider for slope values
-                                 column(6, align = "center", uiOutput("slope")),
-                                 
-                                 #slider for phosphorus values
-                                 column(6, align = "center", uiOutput("phos")))
-    #           )
-   # )
+  dashboardHeader(
+    title = "Erosion and Phosphorus Loss Predictions v1.0",
+    titleWidth = 450
+  #   title = shinyDashboardLogo(
+  #     theme = "blue_gradient",
+  #     boldText = "Grassland",
+  #     mainText = "2.0",
+  #     badgeText = "v0.5"
+  #   )
+    ),
+
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("App Description", tabName = "appdescription"),
+      menuItem("Soil Selection", tabName = "SoilSelection"),
+      menuItem("Crop management", tabName = "CropManagement"),
+      menuItem("Methods", tabName = "methods"),
+      menuItem("Acknowledgement", tabName = "acknowledgement"),
+      menuItem("References", tabName = "resources")
+    )
   ),
   
-  hr(),
-  
-  # crop management definition begins
-  fixedRow(
-    column(12,
-           h3(strong(em("Define your cropping System"))))
-  ),
-  
-  # row of input including crop rotation, cover crop and tillage (density for dry lot and pasture)
-  fixedRow(
+  dashboardBody(
+    shinyDashboardThemes(
+      theme = "poor_mans_flatly"
+    ),
+    tabItems(
+      tabItem(tabName = "appdescription",
+              fluidRow(
+                column(1,
+                       h2(img(src = "grasslandColorCenter.png", height = 60))),
+                
+                column(10, align = "center",
+                       h2("Erosion and Phosphorus Loss Predictions:"),
+                       p(h3("Tainter Creek watershed, WI"))),
+                
+                column(1,
+                       h2(img(src = "uw-crest.png", height = 60)))),
+              hr(style = "margin-top:0px"),
+              fluidRow(
+                column(12,
+                       tags$div(
+                         "This app is part of the, ",
+                         tags$a(href="https://grasslandag.org/", 
+                                "Grassland 2.0 project."), "It was designed to compare erosion and phosphorus loss 
+                         under different crop managements within the Tainter Creek Watershed, located in Wisconsin, USA."),
+                       br(),
+                      p("To determine your predicted erosion and phosphorus loss, first select your soil type and then define
+                        your cropping system. You can hit 'Run models' as many times as you like under different soils and cropping systems.")))
+              ),
+      tabItem(tabName = "SoilSelection",
+              fixedRow(
+                column(12,
+                       h3("Select Your Soil and Soil Properties"),
+                       helpText(
+                         a(
+                           "Click here to find your soil (NRCS Web Soil Survey)",
+                           href = "https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx",
+                           target = "_blank")))),
+              # soil selection begins
+              # row of selectInputs for selecting soils
+              fixedRow(
+                # Input 1: dropdown for county selections
+                column(4,
+                       selectInput(
+                         inputId = "county",
+                         label = h4("County"),
+                         choices = counties)),
+                #Input 2: dropdown for component name selections. list is created in server.
+                column(4, uiOutput("compname")),
+                # Input 3: dropdown for soil symbol. list is created in server.
+                column(4, uiOutput("musym"))),
+              
+              # row of sliders for defining slope and soil P
+              fixedRow(
+                #slider for slope values
+                column(6, align = "center", uiOutput("slope")),
+                #slider for phosphorus values
+                column(6, align = "center", uiOutput("phos")))
+              ),
     
-    ## COL 1 ##
-    # crop rotation selection
-    column(4,
-           radioButtons(
-             inputId = "crop",
-             label = h4("Crop Rotation"),
-             choices = crops)),
+    tabItem(tabName = "CropManagement",
+            # crop management definition begins
+            fixedRow(
+              column(12,
+                     h3(strong(em("Define your cropping System"))))
+            ),
+            
+            # row of input including crop rotation, cover crop and tillage (density for dry lot and pasture)
+            fixedRow(
+              
+              ## COL 1 ##
+              # crop rotation selection
+              column(4,
+                     radioButtons(
+                       inputId = "crop",
+                       label = h4("Crop Rotation"),
+                       choices = crops)),
+              
+              ## COL 2 ##
+              # cover crop, tillage or density, depending on crop rotation
+              column(4,
+                     uiOutput("cover"),
+                     uiOutput("tillage")),
+              
+              ## COL 3 ##
+              # tillage selection or density (if rotational pasture)
+              column(4,
+                     uiOutput("contour"),
+                     uiOutput("rotation"),
+                     uiOutput("density"))
+            ),
+            
+            conditionalPanel(
+              condition = "input.crop != 'Dry lot'",
+              h4("Fertilizer inputs:")
+            ),
+            
+            # fertilizer (turned off for dry lot)
+            fixedRow(
+              column(6, align = "center",
+                     uiOutput("fert")),
+              
+              column(6,
+                     uiOutput("manure"))
+            ),
+            
+            fluidRow(
+              column(12, align = "center",
+                     actionBttn(
+                       inputId = "runModels",
+                       label = "Run models",
+                       style = "simple",
+                       color = "success")),
+            ),
+            br(),
+            fluidRow(
+              column(6,
+                     plotlyOutput("erosionPred")),
+              column(6,
+                     plotlyOutput("PIPred"))
+            )),
+    tabItem(tabName = "methods"),
+    tabItem(tabName = "acknowledgement"),
+    tabItem(tabName = "resources")
     
-    ## COL 2 ##
-    # cover crop, tillage or density, depending on crop rotation
-    column(4,
-           uiOutput("cover"),
-           uiOutput("tillage")),
-    
-    ## COL 3 ##
-    # tillage selection or density (if rotational pasture)
-    column(4,
-           uiOutput("contour"),
-           uiOutput("rotation"),
-           uiOutput("density"))
-  ),
-  
-  conditionalPanel(
-    condition = "input.crop != 'Dry lot'",
-    h4("Fertilizer inputs:")
-  ),
-  
-  # fertilizer (turned off for dry lot)
-  fixedRow(
-    column(6, align = "center",
-           uiOutput("fert")),
-    
-    column(6,
-           uiOutput("manure"))
-  ),
-  
-  br(),
-  
-  fluidRow(
-    column(12, align = "center",
-           actionBttn(
-             inputId = "runModels",
-             label = "Run models",
-             style = "simple",
-             color = "success"))
-  ),
-  
-  br(),
-  hr(),
-  
-  # fluidRow(
-  #   column(12, align = "center",
-  #          gt_output("scenario"))
-  # ),
-  # br(),
-  # fluidRow(
-  #   column(12, align = "center",
-  #          tableOutput("fullDF"))
-  # ),
-  br(),
-  # fluidRow(
-  #   column(12,
-  #          tableOutput("predDF"))
-  # ),
-  
-  fluidRow(
-    column(6,
-           plotlyOutput("erosionPred")),
-     column(6,
-            plotlyOutput("PIPred"))
-  )
-  
+    # tabItem(tabName = "ModelPredictions",
+    #         # fluidRow(
+    #         #   column(12, align = "center",
+    #         #          gt_output("scenario"))
+    #         # ),
+    #         # br(),
+    #         # fluidRow(
+    #         #   column(12, align = "center",
+    #         #          tableOutput("fullDF"))
+    #         # ),
+    #         # fluidRow(
+    #         #   column(12,
+    #         #          tableOutput("predDF"))
+    #         # ),
+    #         
+    #         fluidRow(
+    #           column(6,
+    #                  plotlyOutput("erosionPred")),
+    #           column(6,
+    #                  plotlyOutput("PIPred"))
+           # ))
+    ))
 )
 
 
@@ -511,173 +540,176 @@ server <- function(input, output) {
       pi_pred_df <- full_df %>% 
         bind_cols(erosion) %>% 
         mutate(Erosion = .pred)
-
+      
       pi <- round(predict(cc_pi, pi_pred_df),2)
-      pi_CI <- predict(cc_pi, pi_pred_df, type = "conf_int")
+      #pi_CI <- predict(cc_pi, pi_pred_df, type = "conf_int")
+      pi_CI <- predict(cc_pi, pi_pred_df, type = "pred_int")
       
-      } else if (full_df$crop == "cg") {
-        cover <- factor(cg_erosion$preproc$xlevels$cover)
-        tillage <- factor(cg_erosion$preproc$xlevels$tillage)
-        Contour <- factor(cg_erosion$preproc$xlevels$Contour)
-        
-        level_df <- expand_grid(cover, tillage, Contour)
-        
-        df <- full_df %>%
-          select(c(slope:totalP2O5_lbs)) %>% 
-          slice(rep(1:n(), each=nrow(level_df)))
-        
-        df <- cbind(level_df, df)
-        
+    } else if (full_df$crop == "cg") {
+      cover <- factor(cg_erosion$preproc$xlevels$cover)
+      tillage <- factor(cg_erosion$preproc$xlevels$tillage)
+      Contour <- factor(cg_erosion$preproc$xlevels$Contour)
+      
+      level_df <- expand_grid(cover, tillage, Contour)
+      
+      df <- full_df %>%
+        select(c(slope:totalP2O5_lbs)) %>% 
+        slice(rep(1:n(), each=nrow(level_df)))
+      
+      df <- cbind(level_df, df)
+      
+      pred_df <- df %>%
+        filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+      
+      erosion <- round(predict(cg_erosion, pred_df),2)
+      
+      pi_pred_df <- full_df %>% 
+        bind_cols(erosion) %>% 
+        mutate(Erosion = .pred)
+      
+      pi <- round(predict(cg_pi, pi_pred_df),2)
+      pi_CI <- predict(cg_pi, pi_pred_df, type = "pred_int")
+      
+    } else if (full_df$crop == "cso") {
+      cover <- factor(cso_erosion$preproc$xlevels$cover)
+      tillage <- factor(cso_erosion$preproc$xlevels$tillage)
+      Contour <- factor(cso_erosion$preproc$xlevels$Contour)
+      
+      level_df <- expand_grid(cover, tillage, Contour)
+      
+      df <- full_df %>%
+        select(c(slope:totalP2O5_lbs)) %>% 
+        slice(rep(1:n(), each=nrow(level_df)))
+      
+      df <- cbind(level_df, df)
+      
+      pred_df <- df %>%
+        filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+      
+      erosion <- round(predict(cso_erosion, pred_df),2)
+      
+      pi_pred_df <- full_df %>%
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
+      
+      pi <- round(predict(cso_pi, pi_pred_df),2)
+      pi_CI <- predict(cso_pi, pi_pred_df, type = "pred_int")
+      
+    } else if (full_df$crop == "dr") {
+      
+      cover <- factor(dr_erosion$preproc$xlevels$cover)
+      tillage <- factor(dr_erosion$preproc$xlevels$tillage)
+      Contour <- factor(dr_erosion$preproc$xlevels$Contour)
+      
+      level_df <- expand_grid(cover, tillage, Contour)
+      
+      df <- full_df %>%
+        select(c(slope:totalP2O5_lbs)) %>% 
+        slice(rep(1:n(), each=nrow(level_df)))
+      
+      df <- cbind(level_df, df)
+      
+      pred_df <- df %>%
+        filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+      
+      erosion <- round(predict(dr_erosion, pred_df),2)
+      
+      pi_pred_df <- full_df %>%
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
+      
+      pi <- round(predict(dr_pi, pi_pred_df),2)
+      pi_CI <- predict(dr_pi, pi_pred_df, type = "pred_int")
+      
+    } else if (full_df$crop == "ps") {
+      tillage <- factor(ps_erosion$preproc$xlevels$tillage)
+      Contour <- factor(ps_erosion$preproc$xlevels$Contour)
+      
+      level_df <- expand_grid(tillage, Contour)
+      
+      df <- full_df %>%
+        select(c(slope:totalP2O5_lbs)) %>% 
+        slice(rep(1:n(), each=nrow(level_df)))
+      
+      df <- cbind(level_df, df)
+      
+      pred_df <- df %>%
+        filter(tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+      
+      erosion <- round(predict(ps_erosion, pred_df),2)
+      
+      pi_pred_df <- full_df %>%
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
+      
+      pi <- round(predict(ps_pi, pi_pred_df),2)
+      pi_CI <- predict(ps_pi, pi_pred_df, type = "pred_int")
+      
+    } else if (full_df$crop == "pt") {
+      density <- factor(pt_erosion$preproc$xlevels$density)
+      rotational <- factor(pt_erosion$preproc$xlevels$rotational)
+      
+      level_df <- expand_grid(rotational, density)
+      
+      df <- full_df %>%
+        select(c(slope:totalP2O5_lbs)) %>% 
+        slice(rep(1:n(), each=length(density)))
+      
+      df <- cbind(level_df, df) 
+      
+      if(full_df$rotational == "rt"){
         pred_df <- df %>%
-          filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
-        
-        erosion <- round(predict(cg_erosion, pred_df),2)
-        
-        pi_pred_df <- full_df %>% 
-          bind_cols(erosion) %>% 
-          mutate(Erosion = .pred)
-        
-        pi <- round(predict(cg_pi, pi_pred_df),2)
-        pi_CI <- predict(cg_pi, pi_pred_df, type = "conf_int")
-        
-      } else if (full_df$crop == "cso") {
-        cover <- factor(cso_erosion$preproc$xlevels$cover)
-        tillage <- factor(cso_erosion$preproc$xlevels$tillage)
-        Contour <- factor(cso_erosion$preproc$xlevels$Contour)
-        
-        level_df <- expand_grid(cover, tillage, Contour)
-        
-        df <- full_df %>%
-          select(c(slope:totalP2O5_lbs)) %>% 
-          slice(rep(1:n(), each=nrow(level_df)))
-        
-        df <- cbind(level_df, df)
-        
+          filter(rotational == levels(full_df$rotational), density == "rt")
+      } else{
         pred_df <- df %>%
-          filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
-        
-        erosion <- round(predict(cso_erosion, pred_df),2)
-        
-        pi_pred_df <- full_df %>%
-          bind_cols(erosion) %>%
-          mutate(Erosion = .pred)
-
-        pi <- round(predict(cso_pi, pi_pred_df),2)
-        pi_CI <- predict(cso_pi, pi_pred_df, type = "conf_int")
-       
-      } else if (full_df$crop == "dr") {
+          filter(rotational == levels(full_df$rotational),  density == levels(full_df$density))
+      }
       
-        cover <- factor(dr_erosion$preproc$xlevels$cover)
-        tillage <- factor(dr_erosion$preproc$xlevels$tillage)
-        Contour <- factor(dr_erosion$preproc$xlevels$Contour)
+      erosion <- round(predict(pt_erosion, pred_df),3)
       
-        level_df <- expand_grid(cover, tillage, Contour)
+      pi_pred_df <- pred_df %>%
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
       
-        df <- full_df %>%
-          select(c(slope:totalP2O5_lbs)) %>% 
-          slice(rep(1:n(), each=nrow(level_df)))
+      pi <- round(predict(pt_pi, pi_pred_df),3)
+      pi_CI <- predict(pt_pi, pi_pred_df, type = "pred_int")
       
-        df <- cbind(level_df, df)
+    } else if (full_df$crop == "dl") {
+      density <- factor(dl_erosion$preproc$xlevels$density)
       
-        pred_df <- df %>%
-          filter(cover == levels(full_df$cover), tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
+      df <- full_df %>%
+        select(c(slope:totalP2O5_lbs)) %>% 
+        slice(rep(1:n(), each=length(density)))
       
-        erosion <- round(predict(dr_erosion, pred_df),2)
+      df <- cbind(density, df)
       
-        pi_pred_df <- full_df %>%
-          bind_cols(erosion) %>%
-          mutate(Erosion = .pred)
-        
-         pi <- round(predict(dr_pi, pi_pred_df),2)
-         pi_CI <- predict(dr_pi, pi_pred_df, type = "conf_int")
+      pred_df <- df %>%
+        filter(density == levels(full_df$density))
       
-      } else if (full_df$crop == "ps") {
-        tillage <- factor(ps_erosion$preproc$xlevels$tillage)
-        Contour <- factor(ps_erosion$preproc$xlevels$Contour)
+      erosion <- round(predict(dl_erosion, pred_df),2)
       
-        level_df <- expand_grid(tillage, Contour)
+      pi_pred_df <- pred_df %>%
+        bind_cols(erosion) %>%
+        mutate(Erosion = .pred)
       
-        df <- full_df %>%
-          select(c(slope:totalP2O5_lbs)) %>% 
-          slice(rep(1:n(), each=nrow(level_df)))
-        
-        df <- cbind(level_df, df)
-        
-        pred_df <- df %>%
-          filter(tillage == levels(full_df$tillage), Contour == levels(full_df$Contour))
-        
-        erosion <- round(predict(ps_erosion, pred_df),2)
-        
-        pi_pred_df <- full_df %>%
-          bind_cols(erosion) %>%
-          mutate(Erosion = .pred)
-  
-        pi <- round(predict(ps_pi, pi_pred_df),2)
-        pi_CI <- predict(ps_pi, pi_pred_df, type = "conf_int")
+      pi <- round(predict(dl_pi, pi_pred_df),2)
+      pi_CI <- predict(dl_pi, pi_pred_df, type = "pred_int")
       
-      } else if (full_df$crop == "pt") {
-        density <- factor(pt_erosion$preproc$xlevels$density)
-        rotational <- factor(pt_erosion$preproc$xlevels$rotational)
-        
-        level_df <- expand_grid(rotational, density)
-        
-        df <- full_df %>%
-          select(c(slope:totalP2O5_lbs)) %>% 
-          slice(rep(1:n(), each=length(density)))
-        
-        df <- cbind(level_df, df) 
-        
-        if(full_df$rotational == "rt"){
-          pred_df <- df %>%
-            filter(rotational == levels(full_df$rotational), density == "rt")
-        } else{
-          pred_df <- df %>%
-            filter(rotational == levels(full_df$rotational),  density == levels(full_df$density))
-        }
-        
-        erosion <- round(predict(pt_erosion, pred_df),3)
-        
-        pi_pred_df <- pred_df %>%
-          bind_cols(erosion) %>%
-          mutate(Erosion = .pred)
-
-        pi <- round(predict(pt_pi, pi_pred_df),3)
-        pi_CI <- predict(pt_pi, pi_pred_df, type = "conf_int")
-        
-      } else if (full_df$crop == "dl") {
-        density <- factor(dl_erosion$preproc$xlevels$density)
-          
-        df <- full_df %>%
-          select(c(slope:totalP2O5_lbs)) %>% 
-          slice(rep(1:n(), each=length(density)))
-        
-        df <- cbind(density, df)
-        
-        pred_df <- df %>%
-          filter(density == levels(full_df$density))
-          
-        erosion <- round(predict(dl_erosion, pred_df),2)
-          
-        pi_pred_df <- pred_df %>%
-          bind_cols(erosion) %>%
-          mutate(Erosion = .pred)
-
-        pi <- round(predict(dl_pi, pi_pred_df),2)
-        pi_CI <- predict(dl_pi, pi_pred_df, type = "conf_int")
-          
-      } 
+    } 
     
     
-    erosion_table <- erosion %>% bind_cols(system = "x")
+    erosion_table <- erosion %>% 
+      bind_cols(system = "x") %>%
+      mutate(across(where(is.numeric), round, 1))
     
     output$erosionPred <- renderPlotly({
       
-      x <- list(
+      y <- list(
         title = " ",
-        range = c(0, 50), 
+        range = c(0, 15), 
         side = "top" 
       )
-      y <- list(
+      x <- list(
         title = "",
         zeroline = FALSE,
         showline = FALSE,
@@ -686,16 +718,19 @@ server <- function(input, output) {
       )
       
       plot_ly(erosion_table, 
-              x = ~.pred, y = ~system,
-              orientation = "h",
+              y = ~.pred, x = ~system,
               marker = list(color = 'rgba(50, 171, 96, 0.7)'),
               type = "bar",
               hoverinfo = "text",
               text = ~paste("Erosion:", .pred)) %>% 
+        add_annotations(y = 15,
+                        text = ~.pred,
+                        showarrow = c(FALSE),
+                        font = list(size = 30)) %>%
         layout(title = "PREDICTED EROSION (tons soil/acre)", 
                xaxis = x, yaxis = y, barmode = 'group',
                margin = list(t=100)) 
-     
+      
       
     })
     
@@ -706,50 +741,53 @@ server <- function(input, output) {
     #   pred_df
     # })
     
-    # safe guard
-    if(pi$.pred < 0) {
-      pi$.pred = 0
-    }
-    
     PI_table <- pi %>% 
       bind_cols(system = "x") %>%
-      bind_cols(pi_CI)
+      bind_cols(pi_CI) %>%
+      mutate(across(where(is.numeric), round, 1)) %>%
+      #if .pred or .pred_lower < 0, set them = 0
+      mutate(.pred = case_when(.pred < 0 ~ 0, 
+                               TRUE ~ .pred),
+             .pred_lower = case_when(.pred_lower < 0 ~ 0, 
+                                     TRUE ~ .pred_lower))
     #PI_table <- data.frame(system =  paste((na.omit(croppingdf[,2]))), PI = pi)
-
+    
     output$PIPred <- renderPlotly({
-
-      x <- list(
+      
+      y <- list(
         title = " ",
-        range = c(0, 50), 
+        range = c(0, 15), 
         side = "top"
       )
-      y <- list(
+      x <- list(
         title = "",
         zeroline = FALSE,
         showline = FALSE,
         showticklabels = FALSE,
         showgrid = FALSE
       )
-
+      
       plot_ly(PI_table,
-              x = ~.pred, y = ~system,
-              error_x = list(type = "data", 
-                             symmetric = FALSE, 
-                             arrayminus = ~.pred_lower, 
-                             array = ~.pred_upper, 
+              y = ~.pred, x = ~system,
+              error_y = list(type = "data",
+                             symmetric = FALSE,
+                             arrayminus = ~.pred - .pred_lower,
+                             array = ~.pred_upper - .pred,
                              color = "black"),
-              orientation = "h",
               marker = list(color = 'rgba(55, 128, 191, 0.7)'),
               type = "bar",
               hoverinfo = "text",
-              text = ~paste("Lower CI:", round(.pred_lower,2),
+              text = ~paste("Lower Prediction Bound:", round(.pred_lower,2),
                             "<br>P Loss:", .pred, 
-                            "<br>Upper CI:", round(.pred_upper,2)
-                            )) %>%
+                            "<br>Upper Prediction Bound:", round(.pred_upper,2))) %>%
+        add_annotations(y = 15,
+                        text = ~.pred,
+                        showarrow = c(FALSE),
+                        font = list(size = 30)) %>%
         layout(title = "PREDICTED PHOSPHORUS LOSS (lbs P/acre)", 
                xaxis = x, yaxis = y, barmode = 'group',
                margin = list(t=100))
-
+      
     })
   })
 }
